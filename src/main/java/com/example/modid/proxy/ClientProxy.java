@@ -1,4 +1,21 @@
 package com.example.modid.proxy;
 
-public class ClientProxy implements IProxy{
+import com.example.modid.ExampleMod;
+import com.example.modid.Tags;
+import net.minecraft.client.Minecraft;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
+import net.minecraftforge.fml.relauncher.Side;
+import net.minecraftforge.fml.relauncher.SideOnly;
+
+@SideOnly(Side.CLIENT)
+public class ClientProxy implements IProxy {
+
+    @Mod.EventHandler
+    public void preInit(FMLPreInitializationEvent event) {
+
+        ExampleMod.LOGGER.info("Hello From {}!", Tags.PROJECT_NAME);
+        ExampleMod.LOGGER.info("Proxy is {}", ExampleMod.proxy);
+        ExampleMod.LOGGER.info("Language: {}", Minecraft.getMinecraft().getLanguageManager().getCurrentLanguage());
+    }
 }

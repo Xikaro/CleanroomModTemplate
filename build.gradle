@@ -1,34 +1,37 @@
+import org.jetbrains.gradle.ext.Gradle
+
 plugins {
     id 'java'
     id 'java-library'
     id 'maven-publish'
-    id 'com.gradleup.shadow' version '9.4.0'
-    id 'org.jetbrains.gradle.plugin.idea-ext' version '1.4.1'
-    id 'xyz.wagyourtail.unimined' version '1.4.17-kappa'
-    id 'net.kyori.blossom' version '2.2.0'
-}
 
-import org.jetbrains.gradle.ext.Gradle
+    alias(libs.plugins.shadow)
+    alias(libs.plugins.ideaExt)
+    alias(libs.plugins.unimined)
+    alias(libs.plugins.buildConstants)
+}
 
 apply from: 'gradle/scripts/helpers.gradle'
 
 // Early Assertions
 assertProperty 'mod_version'
-assertProperty 'root_package'
+assertProperty 'mod_package'
 assertProperty 'mod_id'
 assertProperty 'mod_name'
 
+assertSubProperties 'use_tags', 'tag_class_name'
 assertSubProperties 'use_access_transformer', 'access_transformer_locations'
 assertSubProperties 'is_coremod', 'coremod_includes_mod', 'coremod_plugin_class_name'
 assertSubProperties 'use_asset_mover', 'asset_mover_version'
 
 setDefaultProperty 'generate_sources_jar', true, false
 setDefaultProperty 'generate_javadocs_jar', true, false
+setDefaultProperty 'generate_dev_jar', true, false
 setDefaultProperty 'minecraft_username', true, 'Developer'
 setDefaultProperty 'extra_jvm_args', false, ''
 
 version = propertyString('mod_version')
-group = propertyString('root_package')
+group = propertyString('mod_package')
 
 base {
     archivesName = propertyString('mod_id')
@@ -37,7 +40,7 @@ base {
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(25)
+        languageVersion = JavaLanguageVersion.of(libs.versions.javaToolchain.get())
     }
     if (propertyBool('generate_sources_jar')) {
         withSourcesJar()
@@ -69,7 +72,7 @@ unimined.minecraft {
         if (propertyBool('use_access_transformer')) {
             accessTransformer "${rootProject.projectDir}/src/main/resources/${propertyString('access_transformer_locations')}"
         }
-        loader "0.5.6-alpha"
+        loader propertyString('loader_version')
         runs.auth.username = minecraft_username
         runs.all {
             systemProperty("crl.dev.mixin", "${mod_id}.default.mixin.json,${mod_id}.mod.mixin.json")
@@ -89,9 +92,9 @@ unimined.minecraft {
     }
 
     defaultRemapJar = false
-    
+
     String jarTaskName = propertyBool('enable_shadow') ? "shadowJar" : "jar"
-    
+
     remap(tasks.named(jarTaskName).get()) {
         mixinRemap {
             enableBaseMixin()
@@ -105,49 +108,61 @@ unimined.minecraft {
     }
 }
 
-dependencies {
-    if (propertyBool('use_asset_mover')) {
-        implementation "com.cleanroommc:assetmover:${propertyString('asset_mover_version')}"
-    }
-    if (propertyBool('enable_junit_testing')) {
-        testImplementation 'org.junit.jupiter:junit-jupiter:6.0.3'
-        testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-    }
-}
-
+apply from: 'gradle/scripts/repositories.gradle'
 apply from: 'gradle/scripts/dependencies.gradle'
 
 processResources {
-    rename '(.+_at.cfg)', 'META-INF/$1'
+
+    var replaceProperties = [
+            'mod_id'           : propertyString('mod_id'),
+            'mod_name'         : propertyString('mod_name'),
+            'mod_version'      : propertyString('mod_version'),
+            'mod_description'  : propertyString('mod_description'),
+            'mod_credits'      : propertyString('mod_credits'),
+            'mod_url'          : propertyString('mod_url'),
+            'mod_update_json'  : propertyString('mod_update_json'),
+            'mod_logo_path'    : propertyString('mod_logo_path'),
+            'mod_authors'      : propertyStringList('mod_authors', ',').collect { it.strip() }.join('", "'),
+
+            'minecraft_version': propertyString('minecraft_version'),
+    ]
+
+    var filterList = [
+            'mcmod.info',
+            'pack.mcmeta'
+    ]
+
+    inputs.properties replaceProperties
+    filesMatching(filterList) { fcd ->
+        fcd.expand(replaceProperties)
+    }
+
+    if (propertyBool('use_access_transformer')) {
+        rename '(.+_at.cfg)', 'META-INF/$1'
+    }
+
 }
 
-sourceSets {
-    main {
-        blossom {
-            javaSources {
-                property('mod_id', propertyString('mod_id'))
-                property('mod_name', propertyString('mod_name'))
-                property('mod_version', propertyString('mod_version'))
-                property('package', "${root_package}.${mod_id}")
-            }
-            resources {
-                property('mod_id', propertyString('mod_id'))
-                property('mod_name', propertyString('mod_name'))
-                property('mod_version', propertyString('mod_version'))
-                property('mod_description', propertyString('mod_description'))
-                property('mod_authors', propertyStringList('mod_authors', ',').collect {it.strip()}.join('", "'))
-                property('mod_credits', propertyString('mod_credits'))
-                property('mod_url', propertyString('mod_url'))
-                property('mod_update_json', propertyString('mod_update_json'))
-                property('mod_logo_path', propertyString('mod_logo_path'))
-            }
-        }
+generateBuildConstants {
+
+    classname = propertyString('tag_class_name')
+
+    additionalConstants.put("MOD_ID", propertyString('mod_id'))
+    additionalConstants.put("MOD_VERSION", propertyString('mod_version'))
+    additionalConstants.put("MOD_NAME", propertyString('mod_name'))
+    additionalConstants.put("SERVER_PROXY", propertyString('tag_server_proxy'))
+    additionalConstants.put("CLIENT_PROXY", propertyString('tag_client_proxy'))
+
+    if (tasks.findByName('sourcesJar')) {
+        dependsOn tasks.named('sourcesJar')
     }
 }
 
 idea {
     module {
         inheritOutputDirs = true
+        downloadJavadoc = true
+        downloadSources = true
     }
     project {
         settings {
@@ -178,12 +193,17 @@ if (!propertyBool('enable_shadow')) {
     shadowJar.enabled = false
 }
 
+shadowJar {
+    configurations = [project.configurations.shadow]
+    archiveClassifier = "shadow"
+}
+
 compileJava {
-    sourceCompatibility = targetCompatibility = JavaVersion.VERSION_21
+    sourceCompatibility = targetCompatibility = JavaVersion.toVersion(libs.versions.javaTarget.get())
 }
 
 jar {
-    archiveClassifier = 'dev'
+    archiveClassifier = propertyBool('generate_dev_jar') ? 'dev' : null
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     if (configurations.contain.size() > 0) {
         into('/') {
@@ -214,13 +234,6 @@ jar {
     finalizedBy(tasks.named(remapTaskName).get())
 }
 
-
-shadowJar {
-    configurations = [project.configurations.shadow]
-    archiveClassifier = "shadow"
-}
-
-
 tasks.named(remapTaskName).configure {
     doFirst {
         logging.captureStandardOutput LogLevel.INFO
@@ -230,25 +243,11 @@ tasks.named(remapTaskName).configure {
     }
 }
 
-compileTestJava {
-    sourceCompatibility = targetCompatibility = JavaVersion.VERSION_21
-}
-
-test {
-    useJUnitPlatform()
-    javaLauncher.set(javaToolchains.launcherFor {
-        languageVersion = JavaLanguageVersion.of(25)
-    })
-    if (propertyBool('show_testing_output')) {
-        testLogging {
-            showStandardStreams = true
-        }
-    }
-}
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
 }
 
+apply from: 'gradle/scripts/testing.gradle'
 apply from: 'gradle/scripts/publishing.gradle'
 apply from: 'gradle/scripts/extra.gradle'

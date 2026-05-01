@@ -1,0 +1,9 @@
+[versions]
+assetMover = "2.5"
+hadEnoughItems = "8003309"
+
+[libraries]
+assetMover = { module = "com.cleanroommc:assetmover", version.ref = "assetMover" }
+hadEnoughItems = { module = "curse.maven:had-enough-items-557549", version.ref = "hadEnoughItems" }
+
+[bundles]

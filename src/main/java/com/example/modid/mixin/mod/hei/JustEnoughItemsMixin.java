@@ -10,6 +10,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(value = JustEnoughItems.class, remap = false)
 public class JustEnoughItemsMixin {
+
     @Inject(method = "preInit", at = @At("HEAD"))
     public void print(FMLPreInitializationEvent event, CallbackInfo ci) {
         ExampleMod.LOGGER.info("Hello world");
