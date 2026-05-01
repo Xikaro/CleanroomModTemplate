@@ -7,12 +7,12 @@ import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-@Mod(modid = Tags.PROJECT_ID, name = Tags.PROJECT_NAME, version = Tags.PROJECT_VERSION)
+@Mod(modid = Tags.MOD_ID, name = Tags.MOD_NAME, version = Tags.MOD_VERSION)
 public class ExampleMod {
 
-    public static final Logger LOGGER = LogManager.getLogger(Tags.PROJECT_NAME);
+    public static final Logger LOGGER = LogManager.getLogger(Tags.MOD_NAME);
 
-    @SidedProxy(modId = Tags.PROJECT_ID, clientSide = Tags.CLIENT_PROXY, serverSide = Tags.SERVER_PROXY)
+    @SidedProxy(modId = Tags.MOD_ID, clientSide = Tags.CLIENT_PROXY, serverSide = Tags.SERVER_PROXY)
     public static IProxy proxy;
 
     /**

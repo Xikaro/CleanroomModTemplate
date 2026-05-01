@@ -14,7 +14,7 @@ public class ClientProxy implements IProxy {
     @Mod.EventHandler
     public void preInit(FMLPreInitializationEvent event) {
 
-        ExampleMod.LOGGER.info("Hello From {}!", Tags.PROJECT_NAME);
+        ExampleMod.LOGGER.info("Hello From {}!", Tags.MOD_NAME);
         ExampleMod.LOGGER.info("Proxy is {}", ExampleMod.proxy);
         ExampleMod.LOGGER.info("Language: {}", Minecraft.getMinecraft().getLanguageManager().getCurrentLanguage());
     }

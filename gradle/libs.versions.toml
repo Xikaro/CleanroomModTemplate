@@ -13,7 +13,7 @@ spongeMixin = "0.20.13+mixin.0.8.7"
 shadow = { id = "com.gradleup.shadow", version = "9.4.1" }
 ideaExt = { id = "org.jetbrains.gradle.plugin.idea-ext", version = "1.4.1" }
 unimined = { id = "xyz.wagyourtail.unimined", version = "1.4.17-kappa" }
-buildConstants = { id = "org.cthing.build-constants", version = "2.1.0" }
+buildConstants = { id = "org.cthing.build-constants", version = "2.2.0" }
 
 
 [libraries]

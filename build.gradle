@@ -146,6 +146,7 @@ processResources {
 generateBuildConstants {
 
     classname = propertyString('tag_class_name')
+    includePredefinedConstants = false
 
     additionalConstants.put("MOD_ID", propertyString('mod_id'))
     additionalConstants.put("MOD_VERSION", propertyString('mod_version'))
