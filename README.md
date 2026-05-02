@@ -6,17 +6,17 @@ May have issues, report here or [here](https://github.com/kappa-maintainer/Unimi
 
 ## DOs and DON'Ts
 ### Choose Branch
-Choose mixin branch if you want to use Mixin.
+Each branch keeps the same template layout, but preserves its own focused setup:
 
-Use scala and kotlin branch if you want to use those languages. 
+| Branch | Purpose | Build style |
+| --- | --- | --- |
+| `main` | Java baseline without Mixin examples | Groovy Gradle DSL |
+| `mixin` | Java baseline with Mixin/Coremod examples and Mixin remapping | Groovy Gradle DSL |
+| `scala` | Scala 3 sources and Scala compiler setup | Groovy Gradle DSL |
+| `kotlin` | Kotlin sources and Kotlin build scripts | Kotlin Gradle DSL |
 
-There are 4 branches available:
-- main
-- mixin
-- scala
-- kotlin
+If you want to use non-main branches, after clicking *Create a new repository* under *Use this template*, check the *Include all branches* checkbox.
 
-If you want to use non-main branches, after clicked *Create a new repository* under *Use this template*, check the *Include all branches* checkbox.
 
 ### Running Client or Server
 If you are using IntelliJ, **DO NOT** use the `Minecraft Client` configure with a blue icon. Just use the `2. Run Client` Gradle task.
@@ -34,14 +34,13 @@ Edit gradle.properties and set your modid, mod version, mod name, package, etc.
 
 If you are writing a coremod, remember to set related settings to true.
 
-### Reference Class
-There will be a `Reference` class under your top package.
+### Generated Tags
+The build generates a `Tags` class under your mod package.
 
-This is used to store mod version so you can fill it to `@Mod` annotation.
+It stores values such as mod id, name, version, and proxy class names so they can be used in annotations and source code without template sources.
 
-You should change its location to fit your new package name.
+You can configure its location with `tag_class_name` in `gradle.properties`.
 
-You can find its template under `src/main/java-templates`.
 
 ### Mixin
 1. Rename json config file to include your modid. You will need one json per phase (`PRE_INIT`, `DEFAULT`, `MOD`) 
