@@ -20,28 +20,47 @@ repositories {
     }
     maven {
         name = "CleanroomMaven"
-        url = uri("https://maven.cleanroommc.com")
+        setUrl("https://maven.cleanroommc.com")
     }
     mavenCentral()
     mavenLocal() // Must be last for caching to work
 }
+
 dependencies {
-    compileOnly("com.cleanroommc:sponge-mixin:0.20.13+mixin.0.8.7")
-    implementation("io.github.chaosunity.forgelin:Forgelin-Continuous:2.3.10.0")
+    val libs = project.extensions.getByType<VersionCatalogsExtension>().named("libs")
+    val forge = project.extensions.getByType<VersionCatalogsExtension>().named("forge")
+
+    compileOnly(libs.findLibrary("jetbrainsAnnotations").get())
+    compileOnly(libs.findLibrary("lombok").get())
+    annotationProcessor(libs.findLibrary("lombok").get())
+
+    implementation(libs.findLibrary("forgelin").get())
+
+    if (propertyBool("enable_junit_testing")) {
+        testImplementation(libs.findLibrary("junit").get())
+        testRuntimeOnly(libs.findLibrary("junitLauncher").get())
+        testCompileOnly(libs.findLibrary("lombok").get())
+        testAnnotationProcessor(libs.findLibrary("lombok").get())
+    }
+
     if (propertyBool("enable_lwjglx")) {
-        compileOnly("com.cleanroommc:lwjglx:1.0.0")
+        compileOnly(libs.findLibrary("lwjglx").get())
+    }
+
+    if (propertyBool("use_asset_mover")) {
+        implementation(forge.findLibrary("assetMover").get())
     }
 
     // Example - Dependency descriptor:
-    // 'com.google.code.gson:gson:2.8.6' << group: com.google.code.gson, name:gson, version:2.8.6
-    // 'group:name:version:classifier' where classifier is optional
+    // "com.google.code.gson:gson:2.8.6" -> group: com.google.code.gson, name: gson, version: 2.8.6
+    // "group:name:version:classifier" where classifier is optional
 
     // Example - CurseMaven dependencies:
-    // 'curse.maven:had-enough-items-557549:4543375' << had-enough-items = project slug, 557549 = project id, 4543375 = file id
+    // "curse.maven:had-enough-items-557549:4543375" -> had-enough-items = project slug, 557549 = project id, 4543375 = file id
     // Full documentation: https://cursemaven.com/
 
     // Example - Modrinth dependencies:
-    // 'maven.modrinth:jei:4.16.1.1000' << jei = project name, 4.16.1.1000 = file version
+    // "maven.modrinth:jei:4.16.1.1000" -> jei = project name, 4.16.1.1000 = file version
     // Full documentation: https://docs.modrinth.com/docs/tutorials/maven/
 
     // Common dependency types (configuration):
@@ -53,12 +72,4 @@ dependencies {
     // shadow = bundle dependencies into shadow output artifact (relocation configurable in shadowJar task)
     // modImplementation = mod dependency available at both compile time and runtime
     // modCompileOnly = mod dependency available only at compile time
-
-    // Transitive dependencies:
-    // (Dependencies that your dependency depends on)
-    // If you wish to exclude transitive dependencies in the described dependencies
-    // Use a closure as such:
-    // implementation ('com.google.code.gson:gson:2.8.6') {
-    //     transitive = false
-    // }
 }

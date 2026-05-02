@@ -18,6 +18,9 @@ pluginManagement {
         maven {
             setUrl("https://maven.wagyourtail.xyz/releases")
         }
+        maven {
+            setUrl("https://maven.wagyourtail.xyz/snapshots")
+        }
     }
 }
 
@@ -26,6 +29,17 @@ plugins {
     id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
 }
 
+dependencyResolutionManagement {
+    repositories {
+        mavenCentral()
+    }
+    versionCatalogs {
+        create("forge") {
+            from(files("gradle/forge.versions.toml"))
+        }
+    }
+}
+
 // Due to an IntelliJ bug, this has to be done
 // rootProject.name = archives_base_name
-rootProject.name = rootProject.projectDir.name
+rootProject.name = providers.gradleProperty("mod_name").getOrElse(rootProject.projectDir.name)

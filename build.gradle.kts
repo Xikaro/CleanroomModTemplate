@@ -2,35 +2,40 @@ import org.jetbrains.gradle.ext.Gradle
 import org.jetbrains.gradle.ext.compiler
 import org.jetbrains.gradle.ext.runConfigurations
 import org.jetbrains.gradle.ext.settings
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
 
 plugins {
     java
     `java-library`
     `maven-publish`
-    kotlin("jvm") version "2.3.20"
-    id("com.gradleup.shadow") version "9.4.0"
-    id("org.jetbrains.gradle.plugin.idea-ext") version "1.4.1"
-    id("xyz.wagyourtail.unimined") version "1.4.17-kappa"
-    id("net.kyori.blossom") version "2.2.0"
+
+    alias(libs.plugins.kotlinJvm)
+    alias(libs.plugins.shadow)
+    alias(libs.plugins.ideaExt)
+    alias(libs.plugins.unimined)
+    alias(libs.plugins.buildConstants)
 }
 
 // Early Assertions
 assertProperty("mod_version")
-assertProperty("root_package")
+assertProperty("mod_package")
 assertProperty("mod_id")
 assertProperty("mod_name")
 
+assertSubProperties("use_tags", "tag_class_name")
 assertSubProperties("use_access_transformer", "access_transformer_locations")
 assertSubProperties("is_coremod", "coremod_includes_mod", "coremod_plugin_class_name")
 assertSubProperties("use_asset_mover", "asset_mover_version")
 
 setDefaultProperty("generate_sources_jar", true, false)
 setDefaultProperty("generate_javadocs_jar", true, false)
+setDefaultProperty("generate_dev_jar", true, false)
 setDefaultProperty("minecraft_username", true, "Developer")
 setDefaultProperty("extra_jvm_args", false, "")
 
 version = propertyString("mod_version")
-group = propertyString("root_package")
+group = propertyString("mod_package")
 
 base {
     archivesName.set(propertyString("mod_id"))
@@ -38,7 +43,7 @@ base {
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(25)
+        languageVersion = JavaLanguageVersion.of(libs.versions.javaToolchain.get())
     }
     if (propertyBool("generate_sources_jar")) {
         withSourcesJar()
@@ -49,7 +54,7 @@ java {
 }
 
 kotlin {
-    jvmToolchain(25)
+    jvmToolchain(libs.versions.javaToolchain.get().toInt())
 }
 
 configurations {
@@ -64,7 +69,7 @@ configurations {
 val remapTaskName = if (propertyBool("enable_shadow")) "remapShadowJar" else "remapJar"
 
 unimined.minecraft {
-    version("1.12.2")
+    version(propertyString("minecraft_version"))
 
     mappings {
         mcp("stable", "39-1.12")
@@ -74,12 +79,12 @@ unimined.minecraft {
         if (propertyBool("use_access_transformer")) {
             accessTransformer("${rootProject.projectDir}/src/main/resources/${propertyString("access_transformer_locations")}")
         }
-        loader("0.5.6-alpha")
-        runs.auth.username = property("minecraft_username").toString()
+        loader(propertyString("loader_version"))
+        runs.auth.username = propertyString("minecraft_username")
         runs.all {
             val extraArgs = propertyString("extra_jvm_args")
             if (extraArgs.trim().isNotEmpty()) {
-                jvmArgs(extraArgs.split("\\s+"))
+                jvmArgs(extraArgs.split("\\s+".toRegex()))
             }
             if (propertyBool("enable_foundation_debug")) {
                 systemProperties.apply {
@@ -98,11 +103,6 @@ unimined.minecraft {
     val jarTaskName = if (propertyBool("enable_shadow")) "shadowJar" else "jar"
 
     remap(tasks.named(jarTaskName).get()) {
-        mixinRemap {
-            enableBaseMixin()
-            enableMixinExtra()
-            disableRefmap()
-        }
     }
 
     mods {
@@ -113,46 +113,56 @@ unimined.minecraft {
     }
 }
 
-dependencies {
-    if (propertyBool("use_asset_mover")) {
-        implementation("com.cleanroommc:assetmover:${propertyString("asset_mover_version")}")
-    }
-    if (propertyBool("enable_junit_testing")) {
-        testImplementation("org.junit.jupiter:junit-jupiter:6.0.2")
-        testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-    }
-}
-
 apply(plugin = "dependencies")
 
 tasks.processResources {
-    rename("(.+_at.cfg)", "META-INF/$1")
+    val replaceProperties = mapOf(
+        "mod_id" to propertyString("mod_id"),
+        "mod_name" to propertyString("mod_name"),
+        "mod_version" to propertyString("mod_version"),
+        "mod_description" to propertyString("mod_description"),
+        "mod_credits" to propertyString("mod_credits"),
+        "mod_url" to propertyString("mod_url"),
+        "mod_update_json" to propertyString("mod_update_json"),
+        "mod_logo_path" to propertyString("mod_logo_path"),
+        "mod_authors" to propertyStringList("mod_authors", ",").joinToString("\", \"") { it.trim() },
+        "minecraft_version" to propertyString("minecraft_version"),
+    )
+
+    inputs.properties(replaceProperties)
+    filesMatching(listOf("mcmod.info", "pack.mcmeta")) {
+        expand(replaceProperties)
+    }
+
+    if (propertyBool("use_access_transformer")) {
+        rename("(.+_at.cfg)", "META-INF/$1")
+    }
 }
 
-sourceSets {
-    main {
-        blossom {
-            kotlinSources {
-                property("mod_id", propertyString("mod_id"))
-                property("mod_name", propertyString("mod_name"))
-                property("mod_version", propertyString("mod_version"))
-                val rootPackage = propertyString("root_package")
-                val modId = propertyString("mod_id")
-                property("package", "$rootPackage.$modId")
-            }
-            resources {
-                property("mod_id", propertyString("mod_id"))
-                property("mod_name", propertyString("mod_name"))
-                property("mod_version", propertyString("mod_version"))
-                property("mod_description", propertyString("mod_description"))
-                property("mod_authors", propertyStringList("mod_authors", ",").joinToString("\", \"") { it.trim() })
-                property("mod_credits", propertyString("mod_credits"))
-                property("mod_url", propertyString("mod_url"))
-                property("mod_update_json", propertyString("mod_update_json"))
-                property("mod_logo_path", propertyString("mod_logo_path"))
-            }
-        }
+tasks.generateBuildConstants.configure {
+    classname.set(propertyString("tag_class_name"))
+    includePredefinedConstants.set(false)
+
+    additionalConstants.put("MOD_ID", propertyString("mod_id"))
+    additionalConstants.put("MOD_VERSION", propertyString("mod_version"))
+    additionalConstants.put("MOD_NAME", propertyString("mod_name"))
+    additionalConstants.put("SERVER_PROXY", propertyString("tag_server_proxy"))
+    additionalConstants.put("CLIENT_PROXY", propertyString("tag_client_proxy"))
+}
+
+
+if (propertyBool("generate_sources_jar")) {
+    tasks.named<Jar>("sourcesJar") {
+        dependsOn(tasks.named("generateBuildConstants"))
     }
+}
+
+tasks.named("compileKotlin") {
+    dependsOn(tasks.named("generateBuildConstants"))
+}
+
+tasks.withType<KotlinJvmCompile>().configureEach {
+    compilerOptions.jvmTarget.set(JvmTarget.fromTarget(libs.versions.javaTarget.get()))
 }
 
 if (!propertyBool("enable_shadow")) {
@@ -162,7 +172,10 @@ if (!propertyBool("enable_shadow")) {
 idea {
     module {
         inheritOutputDirs = true
+        isDownloadJavadoc = true
+        isDownloadSources = true
     }
+
     project {
         settings {
             runConfigurations {
@@ -186,6 +199,7 @@ idea {
 }
 
 tasks.jar {
+    archiveClassifier = if (propertyBool("generate_dev_jar")) "dev" else null
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     val contain by configurations.getting
     if (!contain.isEmpty) {
@@ -231,16 +245,15 @@ tasks.named(remapTaskName) {
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_25
-    targetCompatibility = JavaVersion.VERSION_25
+    sourceCompatibility = JavaVersion.toVersion(libs.versions.javaTarget.get())
+    targetCompatibility = JavaVersion.toVersion(libs.versions.javaTarget.get())
 }
 
 tasks.test {
     useJUnitPlatform()
-    javaLauncher =
-        javaToolchains.launcherFor {
-            languageVersion = JavaLanguageVersion.of(25)
-        }
+    javaLauncher = javaToolchains.launcherFor {
+        languageVersion = JavaLanguageVersion.of(libs.versions.javaToolchain.get())
+    }
 
     if (propertyBool("show_testing_output")) {
         testLogging {
