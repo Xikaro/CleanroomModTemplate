@@ -1,47 +1,50 @@
+import org.jetbrains.gradle.ext.Gradle
+
 plugins {
     id 'java'
     id 'scala'
     id 'java-library'
     id 'maven-publish'
-    id 'com.gradleup.shadow' version '9.4.0'
-    id 'org.jetbrains.gradle.plugin.idea-ext' version '1.4.1'
-    id 'xyz.wagyourtail.unimined' version '1.4.17-kappa'
-    id 'net.kyori.blossom' version '2.2.0'
-}
 
-import org.jetbrains.gradle.ext.Gradle
+    alias(libs.plugins.shadow)
+    alias(libs.plugins.ideaExt)
+    alias(libs.plugins.unimined)
+    alias(libs.plugins.buildConstants)
+}
 
 apply from: 'gradle/scripts/helpers.gradle'
 
 // Early Assertions
 assertProperty 'mod_version'
-assertProperty 'root_package'
+assertProperty 'mod_package'
 assertProperty 'mod_id'
 assertProperty 'mod_name'
 
+assertSubProperties 'use_tags', 'tag_class_name'
 assertSubProperties 'use_access_transformer', 'access_transformer_locations'
 assertSubProperties 'is_coremod', 'coremod_includes_mod', 'coremod_plugin_class_name'
 assertSubProperties 'use_asset_mover', 'asset_mover_version'
 
 setDefaultProperty 'generate_sources_jar', true, false
 setDefaultProperty 'generate_javadocs_jar', true, false
+setDefaultProperty 'generate_dev_jar', true, false
 setDefaultProperty 'minecraft_username', true, 'Developer'
 setDefaultProperty 'extra_jvm_args', false, ''
 
 version = propertyString('mod_version')
-group = propertyString('root_package')
+group = propertyString('mod_package')
 
 base {
-    archivesName = propertyString('mod_id') as String
+    archivesName = propertyString('mod_id')
 }
 
 scala {
-    scalaVersion = '3.8.2'
+    scalaVersion = libs.versions.scala.get()
 }
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(25)
+        languageVersion = JavaLanguageVersion.of(libs.versions.javaToolchain.get())
     }
     if (propertyBool('generate_sources_jar')) {
         withSourcesJar()
@@ -60,47 +63,42 @@ configurations {
     runtimeOnly.extendsFrom(modRuntimeOnly)
 }
 
-String remapTaskName = propertyBool('enable_shadow') ? "remapShadowJar" : "remapJar"
+String remapTaskName = propertyBool('enable_shadow') ? 'remapShadowJar' : 'remapJar'
 
 unimined.minecraft {
-    version "1.12.2"
+    version propertyString('minecraft_version')
 
     mappings {
-        mcp("stable", "39-1.12")
+        mcp('stable', '39-1.12')
     }
 
     cleanroom {
         if (propertyBool('use_access_transformer')) {
             accessTransformer "${rootProject.projectDir}/src/main/resources/${propertyString('access_transformer_locations')}"
         }
-        loader "0.5.6-alpha"
+        loader propertyString('loader_version')
         runs.auth.username = minecraft_username
         runs.all {
             def extraArgs = propertyString('extra_jvm_args')
             if (extraArgs != null && !extraArgs.trim().isEmpty()) {
-                jvmArgs += extraArgs.split { "\\s+" }.toList()
+                jvmArgs += extraArgs.split { '\\s+' }.toList()
             }
             if (propertyBool('enable_foundation_debug')) {
-                systemProperty("foundation.dump", "true")
-                systemProperty("foundation.verbose", "true")
+                systemProperty('foundation.dump', 'true')
+                systemProperty('foundation.verbose', 'true')
             }
             if (propertyBool('is_coremod')) {
-                systemProperty("fml.coreMods.load", propertyString('coremod_plugin_class_name'))
+                systemProperty('fml.coreMods.load', propertyString('coremod_plugin_class_name'))
             }
             return
         }
     }
 
     defaultRemapJar = false
-    
-    String jarTaskName = propertyBool('enable_shadow') ? "shadowJar" : "jar"
-    
+
+    String jarTaskName = propertyBool('enable_shadow') ? 'shadowJar' : 'jar'
+
     remap(tasks.named(jarTaskName).get()) {
-        mixinRemap {
-            enableBaseMixin()
-            enableMixinExtra()
-            disableRefmap()
-        }
     }
 
     mods {
@@ -109,68 +107,83 @@ unimined.minecraft {
     }
 }
 
-dependencies {
-    if (propertyBool('use_asset_mover')) {
-        implementation "com.cleanroommc:assetmover:${propertyString('asset_mover_version')}"
-    }
-    if (propertyBool('enable_junit_testing')) {
-        testImplementation 'org.junit.jupiter:junit-jupiter:6.0.3'
-        testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-    }
-}
-
+apply from: 'gradle/scripts/repositories.gradle'
 apply from: 'gradle/scripts/dependencies.gradle'
 
 processResources {
-    rename '(.+_at.cfg)', 'META-INF/$1'
+    var replaceProperties = [
+            'mod_id'           : propertyString('mod_id'),
+            'mod_name'         : propertyString('mod_name'),
+            'mod_version'      : propertyString('mod_version'),
+            'mod_description'  : propertyString('mod_description'),
+            'mod_credits'      : propertyString('mod_credits'),
+            'mod_url'          : propertyString('mod_url'),
+            'mod_update_json'  : propertyString('mod_update_json'),
+            'mod_logo_path'    : propertyString('mod_logo_path'),
+            'mod_authors'      : propertyStringList('mod_authors', ',').collect { it.strip() }.join('\", \"'),
+            'minecraft_version': propertyString('minecraft_version'),
+    ]
+
+    var filterList = [
+            'mcmod.info',
+            'pack.mcmeta'
+    ]
+
+    inputs.properties replaceProperties
+    filesMatching(filterList) { fcd ->
+        fcd.expand(replaceProperties)
+    }
+
+    if (propertyBool('use_access_transformer')) {
+        rename '(.+_at.cfg)', 'META-INF/$1'
+    }
 }
 
-sourceSets {
-    main {
-        blossom {
-            scalaSources {
-                property('mod_id', propertyString('mod_id'))
-                property('mod_name', propertyString('mod_name'))
-                property('mod_version', propertyString('mod_version'))
-                property('package', "${root_package}.${mod_id}")
-            }
-            resources {
-                property('mod_id', propertyString('mod_id'))
-                property('mod_name', propertyString('mod_name'))
-                property('mod_version', propertyString('mod_version'))
-                property('mod_description', propertyString('mod_description'))
-                property('mod_authors', propertyStringList('mod_authors', ',').collect {it.strip()}.join('", "'))
-                property('mod_credits', propertyString('mod_credits'))
-                property('mod_url', propertyString('mod_url'))
-                property('mod_update_json', propertyString('mod_update_json'))
-                property('mod_logo_path', propertyString('mod_logo_path'))
-            }
-        }
+generateBuildConstants {
+    classname = propertyString('tag_class_name')
+    includePredefinedConstants = false
+
+    additionalConstants.put('MOD_ID', propertyString('mod_id'))
+    additionalConstants.put('MOD_VERSION', propertyString('mod_version'))
+    additionalConstants.put('MOD_NAME', propertyString('mod_name'))
+    additionalConstants.put('SERVER_PROXY', propertyString('tag_server_proxy'))
+    additionalConstants.put('CLIENT_PROXY', propertyString('tag_client_proxy'))
+}
+
+if (propertyBool('generate_sources_jar')) {
+    tasks.named('sourcesJar', Jar).configure {
+        dependsOn tasks.named('generateBuildConstants')
     }
+}
+
+tasks.named('compileScala').configure {
+    dependsOn tasks.named('generateBuildConstants')
 }
 
 idea {
     module {
         inheritOutputDirs = true
+        downloadJavadoc = true
+        downloadSources = true
     }
     project {
         settings {
             runConfigurations {
                 '1. Build'(Gradle) {
-                    taskNames = ["build"]
+                    taskNames = ['build']
                 }
                 '2. Run Client'(Gradle) {
-                    taskNames = ["runClient"]
+                    taskNames = ['runClient']
                 }
                 '3. Run Server'(Gradle) {
-                    taskNames = ["runServer"]
+                    taskNames = ['runServer']
                 }
             }
             compiler.javac {
                 afterEvaluate {
                     javacAdditionalOptions = '-encoding utf8'
                     moduleJavacAdditionalOptions = [
-                            (project.name + '.main'): tasks.compileJava.options.compilerArgs.collect { '"' + it + '"' }.join(' ')
+                            (project.name + '.main'): tasks.compileJava.options.compilerArgs.collect { '\"' + it + '\"' }.join(' ')
                     ]
                 }
             }
@@ -182,12 +195,17 @@ if (!propertyBool('enable_shadow')) {
     shadowJar.enabled = false
 }
 
+shadowJar {
+    configurations = [project.configurations.shadow]
+    archiveClassifier = 'shadow'
+}
+
 compileJava {
-    sourceCompatibility = targetCompatibility = JavaVersion.VERSION_21
+    sourceCompatibility = targetCompatibility = JavaVersion.toVersion(libs.versions.javaTarget.get())
 }
 
 jar {
-    archiveClassifier = 'dev'
+    archiveClassifier = propertyBool('generate_dev_jar') ? 'dev' : null
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     if (configurations.contain.size() > 0) {
         into('/') {
@@ -197,7 +215,7 @@ jar {
     doFirst {
         manifest {
             def attribute_map = [:]
-            attribute_map['ModType'] = "CRL"
+            attribute_map['ModType'] = 'CRL'
             if (configurations.contain.size() > 0) {
                 attribute_map['ContainedDeps'] = configurations.contain.collect { it.name }.join(' ')
                 attribute_map['NonModDeps'] = true
@@ -217,13 +235,6 @@ jar {
     finalizedBy(tasks.named(remapTaskName).get())
 }
 
-
-shadowJar {
-    configurations = [project.configurations.shadow]
-    archiveClassifier = "shadow"
-}
-
-
 tasks.named(remapTaskName).configure {
     doFirst {
         logging.captureStandardOutput LogLevel.INFO
@@ -233,24 +244,6 @@ tasks.named(remapTaskName).configure {
     }
 }
 
-compileTestJava {
-    sourceCompatibility = targetCompatibility = JavaVersion.VERSION_21
-}
-
-test {
-    useJUnitPlatform()
-    javaLauncher.set(javaToolchains.launcherFor {
-        languageVersion = JavaLanguageVersion.of(25)
-    })
-    if (propertyBool('show_testing_output')) {
-        testLogging {
-            showStandardStreams = true
-        }
-    }
-}
-
-
-
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
 }
@@ -259,5 +252,6 @@ tasks.withType(ScalaCompile).configureEach {
     options.encoding = 'UTF-8'
 }
 
+apply from: 'gradle/scripts/testing.gradle'
 apply from: 'gradle/scripts/publishing.gradle'
 apply from: 'gradle/scripts/extra.gradle'

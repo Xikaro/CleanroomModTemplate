@@ -1,0 +1,24 @@
+[versions]
+javaToolchain = "25"
+javaTarget = "21"
+junit = "6.0.3"
+lombok = "1.18.46"
+lwjglx = "1.0.0"
+scala = "3.8.2"
+jetbrainsAnnotations = "26.0.1"
+
+
+[plugins]
+shadow = { id = "com.gradleup.shadow", version = "9.4.1" }
+ideaExt = { id = "org.jetbrains.gradle.plugin.idea-ext", version = "1.4.1" }
+unimined = { id = "xyz.wagyourtail.unimined", version = "1.4.17-kappa" }
+buildConstants = { id = "org.cthing.build-constants", version = "2.2.0" }
+
+
+[libraries]
+junit = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit" }
+lombok = { module = "org.projectlombok:lombok", version.ref = "lombok" }
+junitLauncher = { module = "org.junit.platform:junit-platform-launcher", version.ref = "junit" }
+lwjglx = { module = "com.cleanroommc:lwjglx", version.ref = "lwjglx" }
+scala3Library = { module = "org.scala-lang:scala3-library_3", version.ref = "scala" }
+jetbrainsAnnotations = { module = "org.jetbrains:annotations", version.ref = "jetbrainsAnnotations" }

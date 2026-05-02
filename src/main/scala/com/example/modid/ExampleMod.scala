@@ -1,28 +1,29 @@
 package com.example.modid
 
+import scala.compiletime.uninitialized
+
 import com.example.modid.proxy.IProxy
-import net.minecraft.client.Minecraft
-import net.minecraftforge.fml.common.{Mod, SidedProxy}
 import net.minecraftforge.fml.common.event.FMLPreInitializationEvent
-import org.apache.logging.log4j.LogManager
-import org.apache.logging.log4j.Logger
 
+import net.minecraftforge.fml.common.{Mod, SidedProxy}
+import org.apache.logging.log4j.{LogManager, Logger}
 
-@Mod(modid = Reference.MOD_ID, name = Reference.MOD_NAME, version = Reference.VERSION, modLanguage = "scala") 
+@Mod(modid = Tags.MOD_ID, name = Tags.MOD_NAME, version = Tags.MOD_VERSION, modLanguage = "scala")
 object ExampleMod {
 
-  val LOGGER: Logger = LogManager.getLogger(Reference.MOD_NAME)
-  @SidedProxy(modId = Reference.MOD_ID, clientSide = "com.example.modid.proxy.ClientProxy", serverSide = "com.example.modid.proxy.CommonProxy")
-  var proxy: IProxy = null;
+  val LOGGER: Logger = LogManager.getLogger(Tags.MOD_NAME)
+
+  @SidedProxy(modId = Tags.MOD_ID, clientSide = Tags.CLIENT_PROXY, serverSide = Tags.SERVER_PROXY)
+  var proxy: IProxy = uninitialized
+
+
   /**
    * <a href="https://cleanroommc.com/wiki/forge-mod-development/event#overview">
    * Take a look at how many FMLStateEvents you can listen to via the @Mod.EventHandler annotation here
    * </a>
    */
-  @Mod.EventHandler 
+  @Mod.EventHandler
   def preInit(event: FMLPreInitializationEvent): Unit = {
-    ExampleMod.LOGGER.info("Hello From {}!", Reference.MOD_NAME)
-    LOGGER.info("Proxy is {}", proxy)
-    LOGGER.info("Language: {}", Minecraft.getMinecraft.getLanguageManager.getCurrentLanguage)
+    proxy.preInit(event)
   }
 }

@@ -1,0 +1,15 @@
+compileTestJava {
+    sourceCompatibility = targetCompatibility = JavaVersion.toVersion(libs.versions.javaTarget.get())
+}
+
+test {
+    useJUnitPlatform()
+    javaLauncher.set(javaToolchains.launcherFor {
+        languageVersion = JavaLanguageVersion.of(libs.versions.javaToolchain.get())
+    })
+    if (propertyBool('show_testing_output')) {
+        testLogging {
+            showStandardStreams = true
+        }
+    }
+}
