@@ -20,17 +20,29 @@ assertProperty 'mod_id'
 assertProperty 'mod_name'
 
 assertSubProperties 'use_tags', 'tag_class_name'
+assertProperty 'mixin_configs'
 assertSubProperties 'use_access_transformer', 'access_transformer_locations'
+
 assertSubProperties 'is_coremod', 'coremod_includes_mod', 'coremod_plugin_class_name'
 assertSubProperties 'use_asset_mover', 'asset_mover_version'
 
 setDefaultProperty 'generate_sources_jar', true, false
 setDefaultProperty 'generate_javadocs_jar', true, false
 setDefaultProperty 'generate_dev_jar', true, false
+setDefaultProperty 'mixin_configs', false, "${propertyString('mod_id')}.default.mixin,${propertyString('mod_id')}.mod.mixin"
 setDefaultProperty 'minecraft_username', true, 'Developer'
 setDefaultProperty 'extra_jvm_args', false, ''
 
+String mixinConfigFiles(Collection<String> mixinConfigNames) {
+    String mixinConfigExtension = '.json'
+    return mixinConfigNames.collect { it.trim() }
+            .findAll { !it.isEmpty() }
+            .collect { it.endsWith(mixinConfigExtension) ? it : "${it}${mixinConfigExtension}" }
+            .join(',')
+}
+
 version = propertyString('mod_version')
+
 group = propertyString('mod_package')
 
 base {
@@ -75,8 +87,12 @@ unimined.minecraft {
         loader propertyString('loader_version')
         runs.auth.username = minecraft_username
         runs.all {
-            systemProperty("crl.dev.mixin", "${mod_id}.default.mixin.json,${mod_id}.mod.mixin.json")
+            def mixinConfigsValue = mixinConfigFiles(propertyStringList('mixin_configs', ','))
+            if (!mixinConfigsValue.isEmpty()) {
+                systemProperty("crl.dev.mixin", mixinConfigsValue)
+            }
             def extraArgs = propertyString('extra_jvm_args')
+
             if (extraArgs != null && !extraArgs.trim().isEmpty()) {
                 jvmArgs += extraArgs.split { "\\s+" }.toList()
             }
@@ -153,13 +169,16 @@ generateBuildConstants {
     additionalConstants.put("MOD_NAME", propertyString('mod_name'))
     additionalConstants.put("SERVER_PROXY", propertyString('tag_server_proxy'))
     additionalConstants.put("CLIENT_PROXY", propertyString('tag_client_proxy'))
+}
 
-    if (tasks.findByName('sourcesJar')) {
-        dependsOn tasks.named('sourcesJar')
+if (propertyBool('generate_sources_jar')) {
+    tasks.named('sourcesJar', Jar).configure {
+        dependsOn tasks.named('generateBuildConstants')
     }
 }
 
 idea {
+
     module {
         inheritOutputDirs = true
         downloadJavadoc = true
@@ -215,8 +234,12 @@ jar {
         manifest {
             def attribute_map = [:]
             attribute_map['ModType'] = "CRL"
-            attribute_map['MixinConfigs'] = "${mod_id}.default.mixin.json,${mod_id}.mod.mixin.json"
+            def mixinConfigsValue = mixinConfigFiles(propertyStringList('mixin_configs', ','))
+            if (!mixinConfigsValue.isEmpty()) {
+                attribute_map['MixinConfigs'] = mixinConfigsValue
+            }
             if (configurations.contain.size() > 0) {
+
                 attribute_map['ContainedDeps'] = configurations.contain.collect { it.name }.join(' ')
                 attribute_map['NonModDeps'] = true
             }
