@@ -6,17 +6,17 @@ May have issues, report here or [here](https://github.com/kappa-maintainer/Unimi
 
 ## DOs and DON'Ts
 ### Choose Branch
-Choose mixin branch if you want to use Mixin.
+Each branch keeps the same template layout, but preserves its own focused setup:
 
-Use scala and kotlin branch if you want to use those languages. 
+| Branch | Purpose | Build style |
+| --- | --- | --- |
+| `main` | Java baseline without Mixin examples | Groovy Gradle DSL |
+| `mixin` | Java baseline with Mixin/Coremod examples and Mixin remapping | Groovy Gradle DSL |
+| `scala` | Scala 3 sources and Scala compiler setup | Groovy Gradle DSL |
+| `kotlin` | Kotlin sources and Kotlin build scripts | Kotlin Gradle DSL |
 
-There are 4 branches available:
-- main
-- mixin
-- scala
-- kotlin
+If you want to use non-main branches, after clicking *Create a new repository* under *Use this template*, check the *Include all branches* checkbox.
 
-If you want to use non-main branches, after clicked *Create a new repository* under *Use this template*, check the *Include all branches* checkbox.
 
 ### Running Client or Server
 If you are using IntelliJ, **DO NOT** use the `Minecraft Client` configure with a blue icon. Just use the `2. Run Client` Gradle task.
