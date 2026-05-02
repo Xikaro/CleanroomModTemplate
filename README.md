@@ -34,14 +34,13 @@ Edit gradle.properties and set your modid, mod version, mod name, package, etc.
 
 If you are writing a coremod, remember to set related settings to true.
 
-### Reference Class
-There will be a `Reference` class under your top package.
+### Generated Tags
+The build generates a `Tags` class under your mod package.
 
-This is used to store mod version so you can fill it to `@Mod` annotation.
+It stores values such as mod id, name, version, and proxy class names so they can be used in annotations and source code without template sources.
 
-You should change its location to fit your new package name.
+You can configure its location with `tag_class_name` in `gradle.properties`.
 
-You can find its template under `src/main/java-templates`.
 
 ### Mixin
 1. Rename json config file to include your modid. You will need one json per phase (`PRE_INIT`, `DEFAULT`, `MOD`) 
