@@ -54,6 +54,7 @@ dependencies {
         implementation(forge.assetMover)
     }
 
+    // Used by the optional mod mixin example under src/main/java/.../mixin/mod/hei.
     modImplementation(forge.hadEnoughItems)
-
 }
+
