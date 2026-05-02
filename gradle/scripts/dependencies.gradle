@@ -45,7 +45,6 @@ dependencies {
         testCompileOnly(libs.lombok)
         testAnnotationProcessor(libs.lombok)
     }
-    modImplementation 'curse.maven:hei-557549:6187146' // Use for mod Mixin example
 
     if (propertyBool('enable_lwjglx')) {
         compileOnly(libs.lwjglx)
@@ -55,6 +54,6 @@ dependencies {
         implementation(forge.assetMover)
     }
 
-    implementation(forge.hadEnoughItems)
+    modImplementation(forge.hadEnoughItems)
 
 }
