@@ -1,0 +1,7 @@
+[versions]
+assetMover = "2.5"
+
+[libraries]
+assetMover = { module = "com.cleanroommc:assetmover", version.ref = "assetMover" }
+
+[bundles]
